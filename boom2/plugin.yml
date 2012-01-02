@@ -1,0 +1,7 @@
+name: Boom
+main: me.hammale.boom.boom
+version: 1.0
+commands:
+  boom:
+    description:
+    usage: "Incorrect command. Use '/boom help' for help"
