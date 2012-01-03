@@ -22,6 +22,7 @@ import org.bukkit.util.Vector;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Scanner;
 import java.util.UUID;
 
 public class boom extends JavaPlugin
@@ -33,6 +34,8 @@ public class boom extends JavaPlugin
 	public ArrayList<UUID> pigs = new ArrayList();
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public ArrayList<String> nuker = new ArrayList();
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public ArrayList<String> flame = new ArrayList();
 	static int targetX;
     static int targetY;
     static int targetZ;
@@ -63,6 +66,7 @@ public class boom extends JavaPlugin
     pm.registerEvent(Event.Type.BLOCK_PLACE, this.mineBlock, Event.Priority.Normal, this);
     pm.registerEvent(Event.Type.PLAYER_MOVE, this.boomPlayer, Event.Priority.Normal, this);
     pm.registerEvent(Event.Type.ENTITY_DEATH, this.boomEntity, Event.Priority.Normal, this);
+    pm.registerEvent(Event.Type.PLAYER_INTERACT, this.boomPlayer, Event.Priority.Normal, this);
   }
   public boolean onCommand(final CommandSender sender, Command cmd, String commandLabel, String[] args){
 		if(cmd.getName().equalsIgnoreCase("boom")){
@@ -81,7 +85,20 @@ public class boom extends JavaPlugin
 				}, 60L);
 			return true;
 		}
-			}else if (args[0].equalsIgnoreCase("torch")) {
+			}else if (args[0].equalsIgnoreCase("help")) {
+				sender.sendMessage(ChatColor.GOLD + "<---" + ChatColor.BLUE + "BOOM VERSION 1.0" + ChatColor.GOLD + "--->");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom mine" + ChatColor.WHITE + " -- "   + ChatColor.GREEN + "Sets a landmine at your feet");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom nuke" + ChatColor.WHITE + " -- "   + ChatColor.GREEN + "Toggles eggs exploding on contact w/ 50 power");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom nuke <size>" + ChatColor.WHITE + " -- "   + ChatColor.GREEN + "Toggles eggs exploding on contact w/ <size> power");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom torch" + ChatColor.WHITE + " -- "   + ChatColor.GREEN + "Toggles torch mode");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom zap" + ChatColor.WHITE + " -- "   + ChatColor.GREEN + "Strikes the block your looking at w/ lightning");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom zap <player>" + ChatColor.WHITE + " -- "   + ChatColor.GREEN + "Zap's <player> w/ lightning");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom airstrike" + ChatColor.WHITE + " -- "   + ChatColor.GREEN + "Starts an airstrike");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom flame" + ChatColor.GREEN + "Toggles the flmaethrower");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom pig" + ChatColor.WHITE + " -- "  + ChatColor.GREEN + "Throws an exploding pig");
+				sender.sendMessage(ChatColor.LIGHT_PURPLE + "/boom info" + ChatColor.WHITE + " -- " + ChatColor.GREEN + "Displays version & author info");
+				return true;			  
+		  }else if (args[0].equalsIgnoreCase("torch")) {
 				  	Player p = (Player) sender;
 				  	if(active.contains(p.getName())){
 				  		sender.sendMessage(ChatColor.RED + "Exiting torch mode...");
@@ -89,6 +106,20 @@ public class boom extends JavaPlugin
 				  	}else{
 				  		sender.sendMessage(ChatColor.GREEN + "Entering torch mode...");
 				  		active.add(p.getName());
+				  	}
+					return true;			  
+			  }else if (args[0].equalsIgnoreCase("info")) {
+					sender.sendMessage(ChatColor.GOLD + "<---" + ChatColor.BLUE + "BOOM VERSION 1.0" + ChatColor.GOLD + "--->");
+					sender.sendMessage(ChatColor.LIGHT_PURPLE + "Boom Version 1.0" + ChatColor.WHITE + " -- "   + ChatColor.GREEN + "Made by hammale");
+					return true;			  
+			  }else if (args[0].equalsIgnoreCase("flame")) {
+				  	Player p = (Player) sender;
+				  	if(flame.contains(p.getName())){
+				  		sender.sendMessage(ChatColor.RED + "Exiting flamethrower mode...");
+				  		flame.remove(p.getName());
+				  	}else{
+				  		sender.sendMessage(ChatColor.GREEN + "Entering flamethrower mode...");
+				  		flame.add(p.getName());
 				  	}
 					return true;			  
 			  }else if (args[0].equalsIgnoreCase("nuke")) {
@@ -335,7 +366,7 @@ public void loadConfiguration(){
 		try{
 		File file = new File("plugins/Boom/airstrike/" + p.getName() + ".dat");
 		  
-        java.util.Scanner scan;  
+        Scanner scan = null;  
         String str = null;  
   
         if (file.exists()) { 
@@ -356,6 +387,7 @@ public void loadConfiguration(){
   
         out.println(str);  
         out.close();
+        scan.close();
 		}catch (Exception e){
 		  System.err.println("Error: " + e.getMessage());
 		}	
@@ -363,7 +395,7 @@ public void loadConfiguration(){
 	}
 	
 	public static void endStrike(Player p){
-		p.sendMessage(ChatColor.BLUE + "Airstrike complete!");
+		p.sendMessage(ChatColor.GREEN + "Airstrike complete!");
 		File f = new File("plugins/Boom/airstrike/" + p.getName() + ".dat");
 		boolean success = f.delete();
 	    if (!success){
@@ -389,21 +421,13 @@ public void loadConfiguration(){
 	
   public void travel(final Location l1, final Location l2, final Player p)
   {
-    final World w = p.getWorld();
-    double d = l1.distance(l2);
-    
-    int distance = (int) (d * 4);
-    
-    getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
-
-        public void run() {
-        	loopThrough(l1, l2, w);
-        	endStrike(p);
-        }
-    }, distance);    
+    final World w = p.getWorld();   
+    loopThrough(l1, l2, w, p);
+    endStrike(p);   
   }
 
-  private void loopThrough(Location loc1, Location loc2, World w) {
+  private void loopThrough(Location loc1, Location loc2, World w, Player p) {
+	  p.sendMessage(ChatColor.RED + "Airstrike started!");
 	  int i = 1;
 	  int minx = Math.min(loc1.getBlockX(), loc2.getBlockX()),
 	  miny = Math.min(loc1.getBlockY(), loc2.getBlockY()),
@@ -416,7 +440,7 @@ public void loadConfiguration(){
 			  for(int z = minz; z<=maxz;z++)
 			  {
 				  i++;
-				  if(i%10 == 0){
+				  if(i%40 == 0){
 					  Location l = w.getBlockAt(x, y, z).getLocation();
 					  w.createExplosion(l, 4F);
 				  }
@@ -470,11 +494,62 @@ public void loadConfiguration(){
 			  i++;
 			  }
 			  in.close();
+			  br.close();
+			  fstream.close();
 			  return null;
 			    }catch (Exception e){//Catch exception if any
 			  System.err.println("Error: " + e.getMessage());
 			  }
 		return null;		
+	}
+
+	public void throwFlame(Player p) {
+
+		Location loc1 = p.getLocation();
+		Block lb = p.getTargetBlock(null, 25);
+		Location loc2 = lb.getLocation();
+		World w = p.getWorld();
+		  int minx = Math.min(loc1.getBlockX(), loc2.getBlockX()),
+				  miny = Math.min(loc1.getBlockY(), loc2.getBlockY()),
+				  minz = Math.min(loc1.getBlockZ(), loc2.getBlockZ()),
+				  maxx = Math.max(loc1.getBlockX(), loc2.getBlockX()),
+				  maxy = Math.max(loc1.getBlockY(), loc2.getBlockY()),
+				  maxz = Math.max(loc1.getBlockZ(), loc2.getBlockZ());
+				  for(int x = minx; x<=maxx;x++){
+					  for(int y = miny; y<=maxy;y++){
+						  for(int z = minz; z<=maxz;z++)
+						  {
+							  Block b = w.getBlockAt(x, y, z);
+							  Block b1 = b.getRelative(BlockFace.DOWN, 1);							  
+							  Block n = b.getRelative(BlockFace.NORTH, 1);
+							  Block s = b.getRelative(BlockFace.SOUTH, 1);
+							  Block e = b.getRelative(BlockFace.EAST, 1);
+							  Block we = b.getRelative(BlockFace.WEST, 1);
+							  
+							  if(b.getTypeId() == 0 && b1.getTypeId() != 0){
+								  if(fireSafe(b1, n) == true && fireSafe(b1, s) == true && fireSafe(b1, e) == true && fireSafe(b1, we) == true && fireSafe(b1, b) == true)
+								  b.setTypeId(51);
+							  }
+						  }
+					  }
+				  }
+		
+		
+	}
+	
+	public boolean fireSafe(Block b, Block b1){
+		double x = b.getLocation().getX();
+		double y = b.getLocation().getY();
+		double z = b.getLocation().getZ();
+		double x1 = b1.getLocation().getX();
+		double y1 = b1.getLocation().getY();
+		double z1 = b1.getLocation().getZ();
+		if(x == x1 && y == y1 && z == z1){
+			return false;
+		}else{
+			return true;
+		}
+		
 	}
 	
 }
